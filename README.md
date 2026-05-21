@@ -376,6 +376,18 @@ This repo now includes reusable composite actions for CI/CD:
 - `.github/actions/egress-provision`
 - `.github/actions/egress-cleanup`
 
+For external consumers, pin to a release tag instead of `main`:
+
+```yaml
+uses: fm0ss/egress/.github/actions/egress-provision@v0.1.0
+```
+
+and:
+
+```yaml
+uses: fm0ss/egress/.github/actions/egress-cleanup@v0.1.0
+```
+
 The intended pipeline model is:
 
 1. authenticate to AWS in GitHub Actions
@@ -386,6 +398,7 @@ The intended pipeline model is:
 Included example:
 
 - `examples/github-actions/egress-matrix.yml`
+- `examples/github-actions/external-usage.yml`
 
 That example shows a matrix job using multiple locations for the same test workload.
 
@@ -420,12 +433,28 @@ Notes:
 - proxy mode is the easiest fit for CI pipelines
 - the provision action exports any returned proxy environment variables into `GITHUB_ENV`
 - if `aws_profile` is not provided, the action creates a temporary `egress-ci` AWS CLI profile from the ambient `AWS_*` credentials
+- for third-party usage, prefer `aws-actions/configure-aws-credentials` so the workflow receives short-lived AWS credentials
 
 ## Terraform Module
 
 This repo now includes a CLI-backed Terraform module:
 
 - `terraform/modules/egress-lease`
+
+External Terraform consumers should pin a git ref:
+
+```hcl
+module "regional_egress" {
+  source = "git::https://github.com/fm0ss/egress.git//terraform/modules/egress-lease?ref=v0.1.0"
+
+  name             = "regional-test"
+  root_dir         = path.root
+  aws_profile_name = "terraform-playground"
+  account_name     = "ci-aws"
+  location         = "eu-west-1"
+  access_mode      = "proxy"
+}
+```
 
 It provisions a lease during `terraform apply` and destroys that lease during `terraform destroy`.
 
@@ -459,7 +488,19 @@ Important limitations:
 - the machine running Terraform still needs:
   - Go
   - AWS CLI
-  - this repository checkout
+  - this repository checkout or a vendored checkout path available to `root_dir`
+
+## Release usage
+
+For external users, the expected consumption model is:
+
+- GitHub Actions:
+  - `fm0ss/egress/.github/actions/egress-provision@v0.1.0`
+  - `fm0ss/egress/.github/actions/egress-cleanup@v0.1.0`
+- Terraform:
+  - `git::https://github.com/fm0ss/egress.git//terraform/modules/egress-lease?ref=v0.1.0`
+
+Do not recommend `@main` for automation consumers. Tag a release first, then document and use that tag.
 
 ## HTTP API
 

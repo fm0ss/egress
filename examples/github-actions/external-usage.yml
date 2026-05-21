@@ -1,0 +1,40 @@
+name: external-egress-example
+
+on:
+  workflow_dispatch:
+
+jobs:
+  regional-proxy-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        location: [us-east-1, eu-west-1, ap-southeast-1]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::123456789012:role/EgressControlPlane
+
+      - id: egress
+        uses: fm0ss/egress/.github/actions/egress-provision@v0.1.0
+        with:
+          account_name: ci-aws
+          location: ${{ matrix.location }}
+          access_mode: proxy
+          workload_id: gha-${{ github.run_id }}-${{ matrix.location }}
+
+      - name: Run location-aware tests
+        run: |
+          echo "Lease: ${{ steps.egress.outputs.id }}"
+          echo "Endpoint: ${{ steps.egress.outputs.endpoint }}"
+          curl -4 https://ifconfig.me
+
+      - name: Cleanup lease
+        if: always()
+        uses: fm0ss/egress/.github/actions/egress-cleanup@v0.1.0
+        with:
+          lease_id: ${{ steps.egress.outputs.id }}

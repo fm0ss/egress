@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run Go tests
+        run: GOCACHE=/tmp/go-build go test ./...
+
+      - name: Validate helper shell scripts
+        run: |
+          bash -n scripts/gh-action-provision.sh
+          bash -n scripts/gh-action-cleanup.sh
+          bash -n scripts/terraform-lease-up.sh
+          bash -n scripts/terraform-lease-down.sh
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Validate Terraform module
+        run: |
+          terraform -chdir=terraform/modules/egress-lease init -backend=false
+          terraform -chdir=terraform/modules/egress-lease validate
