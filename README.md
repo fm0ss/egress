@@ -70,9 +70,7 @@ Required on the machine where local VPN auto-connect will run:
 
 Required for AWS-backed provisioning:
 
-- AWS CLI available either as:
-  - bundled `aws/dist/aws`, or
-  - `aws` on `PATH`
+- AWS CLI installed on the machine and available as `aws` on `PATH`
 - outbound network access from the host running `egress serve` to AWS APIs
 - an authenticated AWS CLI profile if using the fast-path import flow
 
@@ -82,6 +80,14 @@ Recommended:
 - keep a test AWS account/profile separate from personal or production infrastructure while evaluating the project
 
 ## Quick start
+
+Install AWS CLI first if you want real AWS-backed provisioning:
+
+```bash
+aws --version
+```
+
+If that command fails, install AWS CLI v2 using the official AWS installer or your operating system package manager, then verify `aws --version` works before running `egress serve`.
 
 Build the CLI:
 
@@ -246,7 +252,7 @@ The AWS CLI import flow runs on the server and uses:
 
 That import persists account metadata in state and returns a copyable env export block in the UI. The exported credentials are not stored in `.egress/state.json`.
 
-Real provisioning currently uses the bundled AWS CLI in `aws/dist/aws` and launches regional EC2 instances with:
+Real provisioning uses the installed `aws` CLI and launches regional EC2 instances with:
 
 - a security group exposing `3128/tcp` for proxy or `51820/udp` for VPN
 - the instance's public IPv4
@@ -329,7 +335,7 @@ If you are unsure what exists, inspect:
 
 ```bash
 GOCACHE=/tmp/go-build go run ./cmd/egress state
-AWS_PAGER="" ./aws/dist/aws --no-cli-pager ec2 describe-instances --profile <profile> --region us-east-1 --output json
+AWS_PAGER="" aws --no-cli-pager ec2 describe-instances --profile <profile> --region us-east-1 --output json
 ```
 
 ## CLI

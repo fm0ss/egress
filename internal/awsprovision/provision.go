@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -703,14 +702,9 @@ func runJSON(ctx context.Context, target any, args ...string) error {
 }
 
 func runCLI(ctx context.Context, args ...string) (string, error) {
-	binary := ""
+	binary := "aws"
 	if envBinary := strings.TrimSpace(os.Getenv("EGRESS_AWS_CLI")); envBinary != "" {
 		binary = envBinary
-	} else {
-		binary = filepath.Join(".", "aws", "dist", "aws")
-		if _, err := os.Stat(binary); err != nil {
-			binary = "aws"
-		}
 	}
 	output, err := awscli.Run(ctx, binary, args...)
 	if err != nil {

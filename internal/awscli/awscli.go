@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -122,17 +121,9 @@ func findBinary() (string, error) {
 			return configured, nil
 		}
 	}
-	if bundled := filepath.Join(".", "aws", "dist", "aws"); fileExists(bundled) {
-		return bundled, nil
-	}
 	binary, err := exec.LookPath("aws")
 	if err == nil {
 		return binary, nil
 	}
 	return "", ErrUnavailable
-}
-
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }

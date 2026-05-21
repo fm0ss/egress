@@ -11,6 +11,7 @@
 
 # AWS local artifacts
 awscliv2.zip
+aws/
 
 # Editor/OS noise
 .DS_Store
