@@ -1,0 +1,61 @@
+name: "Egress Provision"
+description: "Provision a location-aware egress lease and expose its details to a workflow"
+inputs:
+  aws_profile:
+    description: "Existing AWS CLI profile to use. If omitted, the action creates a temporary egress-ci profile from AWS_* env vars."
+    required: false
+  account_name:
+    description: "Saved egress account name. Defaults to the AWS profile name."
+    required: false
+  location:
+    description: "Location id or region such as us-east-1"
+    required: true
+  access_mode:
+    description: "proxy or vpn"
+    required: false
+    default: "proxy"
+  workload_id:
+    description: "Workload label recorded in egress state"
+    required: false
+  state_path:
+    description: "State file path"
+    required: false
+    default: ".egress/state.json"
+outputs:
+  id:
+    description: "Lease id"
+    value: ${{ steps.provision.outputs.id }}
+  public_ip:
+    description: "Provisioned public IP"
+    value: ${{ steps.provision.outputs.public_ip }}
+  endpoint:
+    description: "Client endpoint"
+    value: ${{ steps.provision.outputs.endpoint }}
+  region:
+    description: "Region"
+    value: ${{ steps.provision.outputs.region }}
+  location:
+    description: "Resolved location"
+    value: ${{ steps.provision.outputs.location }}
+  access_mode:
+    description: "Provisioned access mode"
+    value: ${{ steps.provision.outputs.access_mode }}
+  lease_json:
+    description: "Raw lease JSON"
+    value: ${{ steps.provision.outputs.lease_json }}
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ github.action_path }}/../../../go.mod
+    - id: provision
+      shell: bash
+      env:
+        INPUT_AWS_PROFILE: ${{ inputs.aws_profile }}
+        INPUT_ACCOUNT_NAME: ${{ inputs.account_name }}
+        INPUT_LOCATION: ${{ inputs.location }}
+        INPUT_ACCESS_MODE: ${{ inputs.access_mode }}
+        INPUT_WORKLOAD_ID: ${{ inputs.workload_id }}
+        INPUT_STATE_PATH: ${{ inputs.state_path }}
+      run: ${{ github.action_path }}/../../../scripts/gh-action-provision.sh

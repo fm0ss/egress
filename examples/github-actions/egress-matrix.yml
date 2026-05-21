@@ -1,0 +1,43 @@
+name: egress-matrix-example
+
+on:
+  workflow_dispatch:
+
+jobs:
+  regional-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - location: us-east-1
+          - location: eu-west-1
+          - location: ap-southeast-1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::123456789012:role/EgressControlPlane
+
+      - id: egress
+        uses: ./.github/actions/egress-provision
+        with:
+          account_name: ci-aws
+          location: ${{ matrix.location }}
+          access_mode: proxy
+          workload_id: gha-${{ github.run_id }}-${{ matrix.location }}
+
+      - name: Run tests through regional egress
+        run: |
+          echo "Using egress endpoint ${{ steps.egress.outputs.endpoint }}"
+          curl -fsSL https://ifconfig.me
+          ./scripts/run-tests.sh
+
+      - name: Cleanup egress
+        if: always()
+        uses: ./.github/actions/egress-cleanup
+        with:
+          lease_id: ${{ steps.egress.outputs.id }}

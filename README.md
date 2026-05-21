@@ -369,6 +369,98 @@ GOCACHE=/tmp/go-build go run ./cmd/egress disconnect-local -latest
 GOCACHE=/tmp/go-build go run ./cmd/egress cleanup-all
 ```
 
+## GitHub Actions
+
+This repo now includes reusable composite actions for CI/CD:
+
+- `.github/actions/egress-provision`
+- `.github/actions/egress-cleanup`
+
+The intended pipeline model is:
+
+1. authenticate to AWS in GitHub Actions
+2. provision a location-specific egress lease
+3. run tests through that exit location
+4. clean up the lease in an `always()` step
+
+Included example:
+
+- `examples/github-actions/egress-matrix.yml`
+
+That example shows a matrix job using multiple locations for the same test workload.
+
+Typical usage:
+
+```yaml
+- uses: aws-actions/configure-aws-credentials@v4
+  with:
+    aws-region: us-east-1
+    role-to-assume: arn:aws:iam::123456789012:role/EgressControlPlane
+
+- id: egress
+  uses: ./.github/actions/egress-provision
+  with:
+    account_name: ci-aws
+    location: eu-west-1
+    access_mode: proxy
+
+- name: Run tests through regional egress
+  run: |
+    curl -fsSL https://ifconfig.me
+    ./scripts/run-tests.sh
+
+- if: always()
+  uses: ./.github/actions/egress-cleanup
+  with:
+    lease_id: ${{ steps.egress.outputs.id }}
+```
+
+Notes:
+
+- proxy mode is the easiest fit for CI pipelines
+- the provision action exports any returned proxy environment variables into `GITHUB_ENV`
+- if `aws_profile` is not provided, the action creates a temporary `egress-ci` AWS CLI profile from the ambient `AWS_*` credentials
+
+## Terraform Module
+
+This repo now includes a CLI-backed Terraform module:
+
+- `terraform/modules/egress-lease`
+
+It provisions a lease during `terraform apply` and destroys that lease during `terraform destroy`.
+
+This is useful when teams already standardize pipeline setup with Terraform but still want to consume egress locations through the current CLI implementation.
+
+Example:
+
+```hcl
+module "eu_test_egress" {
+  source           = "../../terraform/modules/egress-lease"
+  name             = "eu-test"
+  root_dir         = "${path.root}/../.."
+  aws_profile_name = "terraform-playground"
+  account_name     = "ci-aws"
+  location         = "eu-west-1"
+  access_mode      = "proxy"
+}
+```
+
+Module outputs include:
+
+- `lease`
+- `lease_id`
+- `public_ip`
+- `endpoint`
+
+Important limitations:
+
+- this is not a native Terraform provider
+- it depends on local execution of the `egress` CLI
+- the machine running Terraform still needs:
+  - Go
+  - AWS CLI
+  - this repository checkout
+
 ## HTTP API
 
 The web console is backed by a small HTTP API:

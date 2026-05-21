@@ -1,0 +1,25 @@
+name: "Egress Cleanup"
+description: "Destroy a specific lease or clean up app-managed AWS egress resources"
+inputs:
+  lease_id:
+    description: "Specific lease id to destroy"
+    required: false
+  account_name:
+    description: "Optional saved egress account name or id to clean up"
+    required: false
+  state_path:
+    description: "State file path"
+    required: false
+    default: ".egress/state.json"
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ github.action_path }}/../../../go.mod
+    - shell: bash
+      env:
+        INPUT_LEASE_ID: ${{ inputs.lease_id }}
+        INPUT_ACCOUNT_NAME: ${{ inputs.account_name }}
+        INPUT_STATE_PATH: ${{ inputs.state_path }}
+      run: ${{ github.action_path }}/../../../scripts/gh-action-cleanup.sh
