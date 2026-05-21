@@ -4,12 +4,21 @@ set -euo pipefail
 ROOT_DIR="${GITHUB_ACTION_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$ROOT_DIR"
 
+EGRESS_BIN="${EGRESS_BIN:-}"
+if [[ -z "$EGRESS_BIN" ]]; then
+  if [[ -x "$ROOT_DIR/egress" ]]; then
+    EGRESS_BIN="$ROOT_DIR/egress"
+  else
+    EGRESS_BIN="go run ./cmd/egress"
+  fi
+fi
+
 LEASE_ID="${INPUT_LEASE_ID:-}"
 STATE_PATH="${INPUT_STATE_PATH:-.egress/state.json}"
 ACCOUNT_NAME="${INPUT_ACCOUNT_NAME:-}"
 
 if [[ -n "$LEASE_ID" ]]; then
-  go run ./cmd/egress destroy-lease -lease "$LEASE_ID" -state "$STATE_PATH"
+  $EGRESS_BIN destroy-lease -lease "$LEASE_ID" -state "$STATE_PATH"
   exit 0
 fi
 
@@ -33,9 +42,10 @@ for lease in leases:
     if gateway in seen:
         continue
     seen.add(gateway)
-    subprocess.run(["go", "run", "./cmd/egress", "destroy-lease", "-lease", lease_id, "-state", state_path], check=True)
+    egress_bin = os.environ.get("EGRESS_BIN", "go run ./cmd/egress")
+    subprocess.run(egress_bin.split() + ["destroy-lease", "-lease", lease_id, "-state", state_path], check=True)
 PY
   exit 0
 fi
 
-go run ./cmd/egress cleanup-all -state "$STATE_PATH"
+$EGRESS_BIN cleanup-all -state "$STATE_PATH"

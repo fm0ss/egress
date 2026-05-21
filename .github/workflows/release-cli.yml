@@ -1,0 +1,87 @@
+name: release-cli
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            archive: tar.gz
+          - goos: linux
+            goarch: arm64
+            archive: tar.gz
+          - goos: darwin
+            goarch: amd64
+            archive: tar.gz
+          - goos: darwin
+            goarch: arm64
+            archive: tar.gz
+          - goos: windows
+            goarch: amd64
+            archive: zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build CLI
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+          BIN_NAME=egress
+          if [ "${GOOS}" = "windows" ]; then
+            BIN_NAME=egress.exe
+          fi
+          go build -trimpath -ldflags="-s -w" -o "dist/${BIN_NAME}" ./cmd/egress
+
+      - name: Package archive
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          BASENAME="egress_${VERSION}_${{ matrix.goos }}_${{ matrix.goarch }}"
+          mkdir -p release
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            (cd dist && zip -9 "../release/${BASENAME}.zip" egress.exe)
+          else
+            tar -C dist -czf "release/${BASENAME}.tar.gz" egress
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: release/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate checksums
+        run: |
+          find artifacts -type f -exec sha256sum {} \; | sed 's#artifacts/.*/##' > checksums.txt
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*
+            checksums.txt

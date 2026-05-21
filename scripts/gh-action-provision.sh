@@ -4,6 +4,15 @@ set -euo pipefail
 ROOT_DIR="${GITHUB_ACTION_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$ROOT_DIR"
 
+EGRESS_BIN="${EGRESS_BIN:-}"
+if [[ -z "$EGRESS_BIN" ]]; then
+  if [[ -x "$ROOT_DIR/egress" ]]; then
+    EGRESS_BIN="$ROOT_DIR/egress"
+  else
+    EGRESS_BIN="go run ./cmd/egress"
+  fi
+fi
+
 PROFILE="${INPUT_AWS_PROFILE:-}"
 ACCOUNT_NAME="${INPUT_ACCOUNT_NAME:-}"
 LOCATION="${INPUT_LOCATION:-}"
@@ -35,8 +44,8 @@ fi
 
 mkdir -p "$(dirname "$STATE_PATH")"
 
-go run ./cmd/egress import-aws-cli -profile "$PROFILE" -name "$ACCOUNT_NAME" -state "$STATE_PATH" >/tmp/egress-import.json
-go run ./cmd/egress provision -account "$ACCOUNT_NAME" -location "$LOCATION" -access-mode "$ACCESS_MODE" -workload "$WORKLOAD_ID" -state "$STATE_PATH" >/tmp/egress-lease.json
+$EGRESS_BIN import-aws-cli -profile "$PROFILE" -name "$ACCOUNT_NAME" -state "$STATE_PATH" >/tmp/egress-import.json
+$EGRESS_BIN provision -account "$ACCOUNT_NAME" -location "$LOCATION" -access-mode "$ACCESS_MODE" -workload "$WORKLOAD_ID" -state "$STATE_PATH" >/tmp/egress-lease.json
 
 python3 - <<'PY'
 import json, os

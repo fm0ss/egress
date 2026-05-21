@@ -89,6 +89,34 @@ aws --version
 
 If that command fails, install AWS CLI v2 using the official AWS installer or your operating system package manager, then verify `aws --version` works before running `egress serve`.
 
+## CLI binary distribution
+
+This project now includes a GitHub release workflow for prebuilt CLI binaries.
+
+On release tags such as `v0.1.0`, GitHub Actions publishes archives for:
+
+- `linux-amd64`
+- `linux-arm64`
+- `darwin-amd64`
+- `darwin-arm64`
+- `windows-amd64`
+
+The release workflow is:
+
+- `.github/workflows/release-cli.yml`
+
+Expected asset names:
+
+- `egress_v0.1.0_linux_amd64.tar.gz`
+- `egress_v0.1.0_linux_arm64.tar.gz`
+- `egress_v0.1.0_darwin_amd64.tar.gz`
+- `egress_v0.1.0_darwin_arm64.tar.gz`
+- `egress_v0.1.0_windows_amd64.zip`
+
+Each release also publishes `checksums.txt`.
+
+Once a release exists, users can install the CLI without Go by downloading the matching archive from GitHub Releases and placing `egress` on `PATH`.
+
 Build the CLI:
 
 ```bash
@@ -433,6 +461,7 @@ Notes:
 - proxy mode is the easiest fit for CI pipelines
 - the provision action exports any returned proxy environment variables into `GITHUB_ENV`
 - if `aws_profile` is not provided, the action creates a temporary `egress-ci` AWS CLI profile from the ambient `AWS_*` credentials
+- the helper scripts now also support `EGRESS_BIN=/path/to/egress` if you want to use a released binary instead of `go run`
 - for third-party usage, prefer `aws-actions/configure-aws-credentials` so the workflow receives short-lived AWS credentials
 
 ## Terraform Module
@@ -486,7 +515,7 @@ Important limitations:
 - this is not a native Terraform provider
 - it depends on local execution of the `egress` CLI
 - the machine running Terraform still needs:
-  - Go
+  - Go, or a released `egress` binary exposed through `EGRESS_BIN`
   - AWS CLI
   - this repository checkout or a vendored checkout path available to `root_dir`
 

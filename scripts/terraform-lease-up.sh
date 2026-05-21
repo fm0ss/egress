@@ -11,7 +11,15 @@ WORKLOAD_ID="${WORKLOAD_ID:?WORKLOAD_ID is required}"
 LEASE_FILE="${LEASE_FILE:?LEASE_FILE is required}"
 
 cd "$ROOT_DIR"
+EGRESS_BIN="${EGRESS_BIN:-}"
+if [[ -z "$EGRESS_BIN" ]]; then
+  if [[ -x "$ROOT_DIR/egress" ]]; then
+    EGRESS_BIN="$ROOT_DIR/egress"
+  else
+    EGRESS_BIN="go run ./cmd/egress"
+  fi
+fi
 mkdir -p "$(dirname "$STATE_PATH")" "$(dirname "$LEASE_FILE")"
 
-go run ./cmd/egress import-aws-cli -profile "$AWS_PROFILE_NAME" -name "$ACCOUNT_NAME" -state "$STATE_PATH" >/dev/null
-go run ./cmd/egress provision -account "$ACCOUNT_NAME" -location "$LOCATION" -access-mode "$ACCESS_MODE" -workload "$WORKLOAD_ID" -state "$STATE_PATH" >"$LEASE_FILE"
+$EGRESS_BIN import-aws-cli -profile "$AWS_PROFILE_NAME" -name "$ACCOUNT_NAME" -state "$STATE_PATH" >/dev/null
+$EGRESS_BIN provision -account "$ACCOUNT_NAME" -location "$LOCATION" -access-mode "$ACCESS_MODE" -workload "$WORKLOAD_ID" -state "$STATE_PATH" >"$LEASE_FILE"
