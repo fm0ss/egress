@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "usage: $0 <wireguard-config-path>" >&2
+  exit 2
+fi
+
+CONFIG_SRC="$1"
+CONFIG_DST="/etc/wireguard/wg0.conf"
+
+if [[ ! -f "$CONFIG_SRC" ]]; then
+  echo "config source does not exist: $CONFIG_SRC" >&2
+  exit 2
+fi
+
+OWNER_UID="$(stat -c '%u' "$CONFIG_SRC")"
+MODE="$(stat -c '%a' "$CONFIG_SRC")"
+
+if [[ "$OWNER_UID" -ne "$(id -u egressd 2>/dev/null || echo -1)" ]]; then
+  echo "config source must be owned by egressd" >&2
+  exit 2
+fi
+
+case "$MODE" in
+  600|640) ;;
+  *)
+    echo "config source permissions must be 600 or 640" >&2
+    exit 2
+    ;;
+esac
+
+install -d -m 700 /etc/wireguard
+install -m 600 "$CONFIG_SRC" "$CONFIG_DST"
+
+if ip link show wg0 >/dev/null 2>&1; then
+  wg-quick down wg0 || true
+fi
+
+wg-quick up wg0

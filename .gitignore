@@ -1,0 +1,17 @@
+.egress/
+
+# Go build artifacts
+/egress
+/bin/
+*.test
+*.out
+
+# Local caches
+.cache/
+
+# AWS local artifacts
+awscliv2.zip
+
+# Editor/OS noise
+.DS_Store
+Thumbs.db

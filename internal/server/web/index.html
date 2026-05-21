@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Egress Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Point, connect, route</p>
+          <h1>Pick a city. Get a proxy or VPN.</h1>
+          <p class="lede">
+            The user flow is one decision: choose where traffic should exit,
+            then pick whether you want a proxy endpoint or a VPN config. The
+            control plane handles policy, attachment, and lease creation behind
+            the scenes.
+          </p>
+          <label class="hero-account-picker">
+            Active AWS account
+            <select id="activeAccountSelect"></select>
+          </label>
+          <div class="hero-stats" id="heroStats"></div>
+        </div>
+
+        <section class="panel map-panel">
+          <div class="panel-heading compact-heading">
+            <div>
+              <p class="kicker">Step 1</p>
+              <h2>Select location</h2>
+            </div>
+            <span id="selectedLocationBadge" class="badge">No city selected</span>
+          </div>
+
+          <form id="provisionForm" class="provision-form">
+            <label>
+              Exit location
+              <select id="locationSelect" name="location_id"></select>
+            </label>
+            <div class="mode-switch" id="modeSwitch">
+              <button type="button" data-mode="proxy" class="mode-chip active">Proxy</button>
+              <button type="button" data-mode="vpn" class="mode-chip">VPN</button>
+            </div>
+
+            <label>
+              Optional workload label
+              <input name="workload_id" placeholder="preview/env/42" />
+            </label>
+
+            <button id="provisionButton" type="submit" class="primary-action">
+              Provision egress
+            </button>
+          </form>
+        </section>
+      </header>
+
+      <main class="dashboard">
+        <section class="panel result-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="kicker">Step 2</p>
+              <h2>Use the connection</h2>
+            </div>
+            <span class="badge" id="resultModeBadge">Waiting</span>
+          </div>
+          <div id="activeLeaseCard" class="empty">
+            Pick a location and provision an egress endpoint.
+          </div>
+        </section>
+
+        <section class="panel split-panel">
+          <div>
+            <div class="panel-heading">
+              <div>
+                <p class="kicker">Connected cloud</p>
+                <h2>AWS account</h2>
+              </div>
+              <span class="badge" id="awsCliBadge">Optional setup</span>
+            </div>
+            <div class="aws-import-box">
+              <div>
+                <p class="kicker">Fastest path</p>
+                <h3>Import from local AWS CLI</h3>
+                <p class="lede" id="awsCliHelp">
+                  Use an existing local AWS profile and verify it through `aws sts get-caller-identity`.
+                </p>
+              </div>
+              <form id="awsCliImportForm" class="form-grid compact">
+                <label>
+                  AWS profile
+                  <select id="awsCliProfileSelect" name="profile"></select>
+                </label>
+                <label>
+                  Connection label
+                  <input name="name" placeholder="prod-aws-cli" />
+                </label>
+                <button type="submit">Import profile</button>
+              </form>
+            </div>
+            <div id="awsCliExportCard" class="empty">
+              Import a profile to get a copyable AWS env export block.
+            </div>
+            <div class="aws-import-box">
+              <div>
+                <p class="kicker">Safety</p>
+                <h3>Cleanup AWS egress</h3>
+                <p class="lede">
+                  Terminate all app-managed gateways and remove their leases from local state.
+                </p>
+              </div>
+              <button id="cleanupAllButton" type="button">Cleanup all AWS egress</button>
+              <div id="cleanupResultCard" class="empty">
+                Cleanup results will appear here.
+              </div>
+            </div>
+            <form id="accountForm" class="form-grid compact">
+              <p class="kicker">Fallback</p>
+              <label>
+                Account label
+                <input name="name" placeholder="prod-aws" required />
+              </label>
+              <label>
+                AWS account ID
+                <input name="aws_account_id" placeholder="123456789012" required />
+              </label>
+              <label>
+                Role ARN
+                <input
+                  name="role_arn"
+                  placeholder="arn:aws:iam::123456789012:role/EgressControlPlane"
+                  required
+                />
+              </label>
+              <label>
+                External ID
+                <input name="external_id" placeholder="vendor-shared-secret" />
+              </label>
+              <button type="submit">Save AWS account</button>
+            </form>
+            <div id="accountsList" class="list-grid"></div>
+          </div>
+
+          <div>
+            <div class="panel-heading">
+              <div>
+                <p class="kicker">Live inventory</p>
+                <h2>Recent leases</h2>
+              </div>
+            </div>
+            <div id="leasesList" class="list-grid"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="/app.js" defer></script>
+  </body>
+  </html>

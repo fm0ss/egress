@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+WRAPPER_SRC="$ROOT_DIR/scripts/egress-apply-wg0"
+WRAPPER_DOWN_SRC="$ROOT_DIR/scripts/egress-down-wg0"
+SUDOERS_SRC="$ROOT_DIR/scripts/egressd.sudoers"
+INSTALL_DIR="/opt/egress"
+SERVICE_HOME="/var/lib/egressd"
+SERVICE_AWS_DIR="$SERVICE_HOME/.aws"
+INVOKING_USER="${SUDO_USER:-}"
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "run as root: sudo $0" >&2
+  exit 1
+fi
+
+if [[ ! -f "$WRAPPER_SRC" ]]; then
+  echo "missing wrapper script: $WRAPPER_SRC" >&2
+  exit 1
+fi
+
+if [[ ! -f "$WRAPPER_DOWN_SRC" ]]; then
+  echo "missing wrapper script: $WRAPPER_DOWN_SRC" >&2
+  exit 1
+fi
+
+if [[ ! -f "$SUDOERS_SRC" ]]; then
+  echo "missing sudoers template: $SUDOERS_SRC" >&2
+  exit 1
+fi
+
+if ! id -u egressd >/dev/null 2>&1; then
+  useradd --system --create-home --home-dir "$SERVICE_HOME" --shell /usr/bin/nologin egressd
+fi
+
+install -d -o egressd -g egressd -m 700 "$SERVICE_HOME"
+install -d -o egressd -g egressd -m 700 "$SERVICE_HOME/go-build"
+install -d -o root -g root -m 755 /usr/local/libexec
+install -o root -g root -m 755 "$WRAPPER_SRC" /usr/local/libexec/egress-apply-wg0
+install -o root -g root -m 755 "$WRAPPER_DOWN_SRC" /usr/local/libexec/egress-down-wg0
+install -o root -g root -m 440 "$SUDOERS_SRC" /etc/sudoers.d/egressd
+
+rm -rf "$INSTALL_DIR"
+install -d -o egressd -g egressd -m 755 "$INSTALL_DIR"
+cp -a "$ROOT_DIR"/. "$INSTALL_DIR"/
+chown -R egressd:egressd "$INSTALL_DIR"
+
+if [[ -n "$INVOKING_USER" ]]; then
+  INVOKING_HOME="$(getent passwd "$INVOKING_USER" | cut -d: -f6 || true)"
+  if [[ -n "$INVOKING_HOME" && -d "$INVOKING_HOME/.aws" ]]; then
+    install -d -o egressd -g egressd -m 700 "$SERVICE_AWS_DIR"
+    if [[ -f "$INVOKING_HOME/.aws/config" ]]; then
+      install -o egressd -g egressd -m 600 "$INVOKING_HOME/.aws/config" "$SERVICE_AWS_DIR/config"
+    fi
+    if [[ -f "$INVOKING_HOME/.aws/credentials" ]]; then
+      install -o egressd -g egressd -m 600 "$INVOKING_HOME/.aws/credentials" "$SERVICE_AWS_DIR/credentials"
+    fi
+  fi
+fi
+
+visudo -cf /etc/sudoers.d/egressd
+
+cat <<'EOF'
+Installed:
+- user: egressd
+- stage dir: /var/lib/egressd
+- aws dir: /var/lib/egressd/.aws
+- go build cache: /var/lib/egressd/go-build
+- app dir: /opt/egress
+- wrapper: /usr/local/libexec/egress-apply-wg0
+- disconnect wrapper: /usr/local/libexec/egress-down-wg0
+- sudoers: /etc/sudoers.d/egressd
+
+Next run:
+  sudo -u egressd bash -lc 'cd /opt/egress && env HOME=/var/lib/egressd AWS_CONFIG_FILE=/var/lib/egressd/.aws/config AWS_SHARED_CREDENTIALS_FILE=/var/lib/egressd/.aws/credentials GOCACHE=/var/lib/egressd/go-build EGRESS_WG_STAGE_DIR=/var/lib/egressd go run ./cmd/egress serve -addr 127.0.0.1:8080'
+EOF

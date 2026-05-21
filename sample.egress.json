@@ -1,0 +1,29 @@
+{
+  "policies": [
+    {
+      "name": "github-actions-us",
+      "region": "us-east-1",
+      "mode": "on_demand",
+      "ip_class": "shared",
+      "ttl_minutes": 60,
+      "destinations": [
+        "api.openai.com",
+        "api.stripe.com"
+      ]
+    },
+    {
+      "name": "preview-eu",
+      "region": "eu-west-1",
+      "fallback_regions": [
+        "eu-central-1"
+      ],
+      "residency": "eu_only",
+      "mode": "on_demand",
+      "ip_class": "dedicated",
+      "ttl_minutes": 120,
+      "destinations": [
+        "api.github.com"
+      ]
+    }
+  ]
+}

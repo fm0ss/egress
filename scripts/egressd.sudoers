@@ -1,0 +1,6 @@
+User_Alias EGRESSD = egressd
+Cmnd_Alias EGRESS_WG = /usr/local/libexec/egress-apply-wg0 /var/lib/egressd/wg0.conf
+Cmnd_Alias EGRESS_WG_DOWN = /usr/local/libexec/egress-down-wg0
+
+Defaults:EGRESSD !requiretty
+EGRESSD ALL=(root) NOPASSWD: EGRESS_WG, EGRESS_WG_DOWN
